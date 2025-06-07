@@ -55,6 +55,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
+extern crate smallvec;
 extern crate thin_vec;
 
 #[macro_use]
@@ -69,7 +70,7 @@ pub mod ctfe; // Very important lint, do not remove (rust#125116)
 pub mod declared_lints;
 pub mod deprecated_lints;
 
-// begin lints modules, do not remove this comment, it’s used in `update_lints`
+// begin lints modules, do not remove this comment, it's used in `update_lints`
 mod absolute_paths;
 mod almost_complete_range;
 mod approx_const;
@@ -95,6 +96,7 @@ mod casts;
 mod cfg_not_test;
 mod checked_conversions;
 mod cloned_ref_to_slice_refs;
+mod coerce_container_to_any;
 mod cognitive_complexity;
 mod collapsible_if;
 mod collection_is_never_read;
@@ -169,6 +171,7 @@ mod inconsistent_struct_constructor;
 mod index_refutable_slice;
 mod indexing_slicing;
 mod ineffective_open_options;
+mod infallible_try_from;
 mod infinite_iter;
 mod inherent_impl;
 mod inherent_to_string;
@@ -404,7 +407,7 @@ mod zero_div_zero;
 mod zero_repeat_side_effects;
 mod zero_sized_map_values;
 mod zombie_processes;
-// end lints modules, do not remove this comment, it’s used in `update_lints`
+// end lints modules, do not remove this comment, it's used in `update_lints`
 
 use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
@@ -946,5 +949,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(single_option_map::SingleOptionMap));
     store.register_late_pass(move |_| Box::new(redundant_test_prefix::RedundantTestPrefix));
     store.register_late_pass(|_| Box::new(cloned_ref_to_slice_refs::ClonedRefToSliceRefs::new(conf)));
+    store.register_late_pass(|_| Box::new(infallible_try_from::InfallibleTryFrom));
+    store.register_late_pass(|_| Box::new(coerce_container_to_any::CoerceContainerToAny));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
