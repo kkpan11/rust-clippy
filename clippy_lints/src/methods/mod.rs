@@ -37,6 +37,7 @@ mod inefficient_to_string;
 mod inspect_for_each;
 mod into_iter_on_ref;
 mod io_other_error;
+mod ip_constant;
 mod is_digit_ascii_radix;
 mod is_empty;
 mod iter_cloned_collect;
@@ -4425,7 +4426,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// use std::io::{BufReader, Read};
     /// use std::fs::File;
-    /// let file = BufReader::new(std::fs::File::open("./bytes.txt").unwrap());
+    /// let file = BufReader::new(File::open("./bytes.txt").unwrap());
     /// file.bytes();
     /// ```
     #[clippy::version = "1.87.0"]
@@ -4439,7 +4440,7 @@ declare_clippy_lint! {
     /// Checks for usage of `iter().any()` on slices when it can be replaced with `contains()` and suggests doing so.
     ///
     /// ### Why is this bad?
-    /// `contains()` is more concise and idiomatic, sometimes more fast.
+    /// `contains()` is more concise and idiomatic, while also being faster in some cases.
     ///
     /// ### Example
     /// ```no_run
@@ -4526,6 +4527,42 @@ declare_clippy_lint! {
     pub SWAP_WITH_TEMPORARY,
     complexity,
     "detect swap with a temporary value"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for IP addresses that could be replaced with predefined constants such as
+    /// `Ipv4Addr::new(127, 0, 0, 1)` instead of using the appropriate constants.
+    ///
+    /// ### Why is this bad?
+    /// Using specific IP addresses like `127.0.0.1` or `::1` is less clear and less maintainable than using the
+    /// predefined constants `Ipv4Addr::LOCALHOST` or `Ipv6Addr::LOCALHOST`. These constants improve code
+    /// readability, make the intent explicit, and are less error-prone.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// // IPv4 loopback
+    /// let addr_v4 = Ipv4Addr::new(127, 0, 0, 1);
+    ///
+    /// // IPv6 loopback
+    /// let addr_v6 = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// // IPv4 loopback
+    /// let addr_v4 = Ipv4Addr::LOCALHOST;
+    ///
+    /// // IPv6 loopback
+    /// let addr_v6 = Ipv6Addr::LOCALHOST;
+    /// ```
+    #[clippy::version = "1.89.0"]
+    pub IP_CONSTANT,
+    pedantic,
+    "hardcoded localhost IP address"
 }
 
 #[expect(clippy::struct_excessive_bools)]
@@ -4706,6 +4743,7 @@ impl_lint_pass!(Methods => [
     MANUAL_CONTAINS,
     IO_OTHER_ERROR,
     SWAP_WITH_TEMPORARY,
+    IP_CONSTANT,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4738,6 +4776,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 useless_nonzero_new_unchecked::check(cx, expr, func, args, self.msrv);
                 io_other_error::check(cx, expr, func, args, self.msrv);
                 swap_with_temporary::check(cx, expr, func, args);
+                ip_constant::check(cx, expr, func, args);
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
@@ -5203,6 +5242,7 @@ impl Methods {
                         unused_enumerate_index::check(cx, expr, recv, m_arg);
                         map_clone::check(cx, expr, recv, m_arg, self.msrv);
                         map_with_unused_argument_over_ranges::check(cx, expr, recv, m_arg, self.msrv, span);
+                        manual_is_variant_and::check_map(cx, expr);
                         match method_call(recv) {
                             Some((map_name @ (sym::iter | sym::into_iter), recv2, _, _, _)) => {
                                 iter_kv_map::check(cx, map_name, expr, recv2, m_arg, self.msrv);

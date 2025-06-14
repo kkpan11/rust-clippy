@@ -44,7 +44,7 @@ pub fn check<'tcx>(
                 return;
             }
             // At this point, we know the call is of a `to_owned`-like function. The functions
-            // `check_addr_of_expr` and `check_call_arg` determine whether the call is unnecessary
+            // `check_addr_of_expr` and `check_into_iter_call_arg` determine whether the call is unnecessary
             // based on its context, that is, whether it is a referent in an `AddrOf` expression, an
             // argument in a `into_iter` call, or an argument in the call of some other function.
             if check_addr_of_expr(cx, expr, method_name, method_def_id, receiver) {
@@ -608,7 +608,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
 }
 
 fn has_lifetime(ty: Ty<'_>) -> bool {
-    ty.walk().any(|t| matches!(t.unpack(), GenericArgKind::Lifetime(_)))
+    ty.walk().any(|t| matches!(t.kind(), GenericArgKind::Lifetime(_)))
 }
 
 /// Returns true if the named method is `Iterator::cloned` or `Iterator::copied`.
@@ -643,7 +643,7 @@ fn is_to_string_on_string_like<'a>(
 
     if let Some(args) = cx.typeck_results().node_args_opt(call_expr.hir_id)
         && let [generic_arg] = args.as_slice()
-        && let GenericArgKind::Type(ty) = generic_arg.unpack()
+        && let GenericArgKind::Type(ty) = generic_arg.kind()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
         && (cx.get_associated_type(ty, deref_trait_id, sym::Target) == Some(cx.tcx.types.str_)
